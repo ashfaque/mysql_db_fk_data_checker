@@ -31,7 +31,7 @@ def check_foreign_keys(connection):
         if table in table_foreign_keys:    # Only taking tables having foreign keys.
             for column_name, referenced_table_name in table_foreign_keys[table]:
                 # Build the query to find invalid references
-                query = f"SELECT COUNT(*) FROM {table} WHERE {column_name} NOT IN (SELECT id FROM {referenced_table_name})"
+                query = f"SELECT COUNT(*) FROM {table} WHERE {column_name} IS NOT NULL AND {column_name} NOT IN (SELECT id FROM {referenced_table_name})"    # ? Skips null values in foreign keys.
                 cursor.execute(query)
                 count = cursor.fetchone()[0]
 
