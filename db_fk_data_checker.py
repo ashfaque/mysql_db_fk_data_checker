@@ -8,15 +8,16 @@ load_dotenv()
 execution_start_time = get_execution_start_time()
 
 
-def log(discrepancy_count, fk_name, table_name, referenced_table_name, invalid_ids):
+def log(discrepancy_count, table_name, primary_key_table, fk_name, referenced_table_name, invalid_ids):
     with open(f'{os.getcwd()}/discrepancies.log', 'a+') as _log:
         _log.write(
 f"""
 ====================================================================================================
 Found {discrepancy_count} discrepancies
-FOREIGN KEY: {fk_name}
 TABLE: {table_name}
-REFERENCED TABLE: {referenced_table_name}
+TABLE {table_name} PRIMARY KEY: {primary_key_table}
+TABLE {table_name} FOREIGN KEY: {fk_name}
+FOREIGN KEY {fk_name} REFERENCED TABLE: {referenced_table_name}
 TABLE {table_name} ID: {invalid_ids}
 ====================================================================================================
 """)
@@ -117,7 +118,9 @@ def check_foreign_keys(connection, batch_size=1000):
                         # ? print(f"Found {len(invalid_ids)} discrepancies in the foreign key '{column_name}' of table '{table}' with reference table named '{referenced_table_name}' with '{table}' id: {tuple(invalid_ids)}")
                         log(
                             discrepancy_count=len(invalid_ids),
-                            fk_name=column_name, table_name=table,
+                            table_name=table,
+                            primary_key_table=primary_key_table
+                            fk_name=column_name,
                             referenced_table_name=referenced_table_name,
                             invalid_ids=tuple(invalid_ids)
                         )
