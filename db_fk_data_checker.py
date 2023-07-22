@@ -119,7 +119,7 @@ def check_foreign_keys(connection, batch_size=1000):
                         log(
                             discrepancy_count=len(invalid_ids),
                             table_name=table,
-                            primary_key_table=primary_key_table
+                            primary_key_table=primary_key_table,
                             fk_name=column_name,
                             referenced_table_name=referenced_table_name,
                             invalid_ids=tuple(invalid_ids)
