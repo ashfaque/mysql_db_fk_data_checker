@@ -146,7 +146,7 @@ def check_foreign_keys(connection, output_file_path, batch_size=1000):
                     print(f"Warning: Unable to determine the primary key for table '{table}' or referenced table '{referenced_table_name}'. Skipping foreign key check.")
 
     df = pd.DataFrame(pd_rows_list)
-    df.to_excel(f'{output_file_path}.xlsx', index=False)
+    df.to_excel(f'{output_file_path}.xlsx', index=False)    # * NB: If character is more than 32767 in a cell, the data after that will be lost while exporting to excel9.
     cursor.close()
 
 
