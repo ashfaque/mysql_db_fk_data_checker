@@ -1,20 +1,21 @@
 import os
+
 import mysql.connector
 from dotenv import load_dotenv
 from ashfaquecodes.ashfaquecodes import get_execution_start_time, get_execution_end_time
-
+import pandas as pd
 
 load_dotenv()
 execution_start_time = get_execution_start_time()
 
 
-def log(log_file_name, discrepancy_count, table_name, primary_key_table, fk_name, referenced_table_name, invalid_ids):
-    log_file_path = f'{os.getcwd()}/output/{log_file_name}.log'
-    log_file_dir = os.path.dirname(log_file_path)
-    if not os.path.exists(log_file_dir):
-        os.makedirs(log_file_dir)
+def create_output_dir_if_no_exists(output_file_path):
+    output_dir_path = os.path.dirname(output_file_path)
+    if not os.path.exists(output_dir_path):
+        os.makedirs(output_dir_path)
 
-    with open(log_file_path, 'a+') as _log:
+def log(output_file_path, discrepancy_count, table_name, primary_key_table, fk_name, referenced_table_name, invalid_ids):
+    with open(f'{output_file_path}.log', 'a+') as _log:
         _log.write(
 f"""
 ====================================================================================================
@@ -52,7 +53,7 @@ def get_primary_key(cursor, table):
         return None
 
 
-def check_foreign_keys(connection, log_file_name, batch_size=1000):
+def check_foreign_keys(connection, output_file_path, batch_size=1000):
     cursor = connection.cursor(prepared=True)
 
     # Get a list of all tables in the database
@@ -71,6 +72,7 @@ def check_foreign_keys(connection, log_file_name, batch_size=1000):
         table_foreign_keys[table_name].append((column_name, referenced_table_name))
 
     print('Total Tables Count: %d' % len(tables))
+    pd_rows_list = []
     # Check foreign keys for data discrepancies
     for index, table in enumerate(tables):
         print('Processing Table Number: ', index)
@@ -122,7 +124,7 @@ def check_foreign_keys(connection, log_file_name, batch_size=1000):
                         invalid_ids = [row[0] for row in invalid_rows]
                         # ? print(f"Found {len(invalid_ids)} discrepancies in the foreign key '{column_name}' of table '{table}' with reference table named '{referenced_table_name}' with '{table}' id: {tuple(invalid_ids)}")
                         log(
-                            log_file_name=log_file_name,
+                            output_file_path=output_file_path,
                             discrepancy_count=len(invalid_ids),
                             table_name=table,
                             primary_key_table=primary_key_table,
@@ -130,10 +132,21 @@ def check_foreign_keys(connection, log_file_name, batch_size=1000):
                             referenced_table_name=referenced_table_name,
                             invalid_ids=tuple(invalid_ids)
                         )
+                        new_pd_row = {
+                                'discrepancy_count': len(invalid_ids),
+                                'table_name': table,
+                                'primary_key_name': primary_key_table,
+                                'foreign_key_name': column_name,
+                                'fk_referenced_table_name': referenced_table_name,
+                                'invalid_ids_of_table': tuple(invalid_ids)
+                        }
+                        pd_rows_list.append(new_pd_row)
 
                 else:
                     print(f"Warning: Unable to determine the primary key for table '{table}' or referenced table '{referenced_table_name}'. Skipping foreign key check.")
 
+    df = pd.DataFrame(pd_rows_list)
+    df.to_excel(f'{output_file_path}.xlsx', index=False)
     cursor.close()
 
 
@@ -149,7 +162,9 @@ if __name__ == "__main__":
     try:
         connection = mysql.connector.connect(**db_config)
         print('Database IP: %s, Database Name: %s' % (db_config['host'], db_config['database']))
-        check_foreign_keys(connection, db_config['host']+'_'+db_config['database'])
+        output_file_path = f"{os.getcwd()}/output/{db_config['host']}_{db_config['database']}"
+        create_output_dir_if_no_exists(output_file_path)
+        check_foreign_keys(connection, output_file_path)
     except mysql.connector.Error as e:
         print(f"Error: {e}")
     finally:
