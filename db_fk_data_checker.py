@@ -8,8 +8,13 @@ load_dotenv()
 execution_start_time = get_execution_start_time()
 
 
-def log(discrepancy_count, table_name, primary_key_table, fk_name, referenced_table_name, invalid_ids):
-    with open(f'{os.getcwd()}/discrepancies.log', 'a+') as _log:
+def log(log_file_name, discrepancy_count, table_name, primary_key_table, fk_name, referenced_table_name, invalid_ids):
+    log_file_path = f'{os.getcwd()}/output/{log_file_name}.log'
+    log_file_dir = os.path.dirname(log_file_path)
+    if not os.path.exists(log_file_dir):
+        os.makedirs(log_file_dir)
+
+    with open(log_file_path, 'a+') as _log:
         _log.write(
 f"""
 ====================================================================================================
@@ -47,7 +52,7 @@ def get_primary_key(cursor, table):
         return None
 
 
-def check_foreign_keys(connection, batch_size=1000):
+def check_foreign_keys(connection, log_file_name, batch_size=1000):
     cursor = connection.cursor(prepared=True)
 
     # Get a list of all tables in the database
@@ -117,6 +122,7 @@ def check_foreign_keys(connection, batch_size=1000):
                         invalid_ids = [row[0] for row in invalid_rows]
                         # ? print(f"Found {len(invalid_ids)} discrepancies in the foreign key '{column_name}' of table '{table}' with reference table named '{referenced_table_name}' with '{table}' id: {tuple(invalid_ids)}")
                         log(
+                            log_file_name=log_file_name,
                             discrepancy_count=len(invalid_ids),
                             table_name=table,
                             primary_key_table=primary_key_table,
@@ -137,12 +143,13 @@ if __name__ == "__main__":
         "user": str(os.getenv('DB_USER')),
         "password": str(os.getenv('DB_PASSWORD')),
         "database": str(os.getenv('DB_NAME')),
+        "port": int(os.getenv('DB_PORT')),
     }
 
     try:
         connection = mysql.connector.connect(**db_config)
         print('Database IP: %s, Database Name: %s' % (db_config['host'], db_config['database']))
-        check_foreign_keys(connection)
+        check_foreign_keys(connection, db_config['host']+'_'+db_config['database'])
     except mysql.connector.Error as e:
         print(f"Error: {e}")
     finally:
